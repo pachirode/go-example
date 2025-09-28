@@ -52,7 +52,7 @@
     - 故意被放在结构体第一个字段，可以减少 `CPU` 执行的指令数，优化性能
 - `m    Mutex`
 
-`Do` 方法 
+`Do` 方法
 
 只有第一执行才会进入到 `slow-path`，将 `slow-path` 分离出来是为了对 `fast-path` 进行内联优化
 
@@ -73,19 +73,64 @@
 
 使用了泛型，接收函数带有返回值，返回函数可带有返回值
 
+# sync.WaitGroup
+
+阻塞等待一组并发任务的完成，会在内部维护一个计数器，`wg.Add(1)` 计数器加一，`wg.Done` 计数器减一，`wg.Wait()`
+阻塞调用者 `goroutine`，直到计数器为 0
+`sync.WaitGroup` 零值可用
+
+### 源码
+
+- `nocpoy`
+    - 用于标识结构体不能被复制
+- `state`
+    - 原子类型，高 32 位是计数器的值，低 32 位是等待者的数量
+- `sema`
+    - 信号量，阻塞和唤醒 `waiter`
+
+### Done
+
+计数器 `counter` 减 1，相当于调用 `wg.Add(-1)`
+
+### Add
+
+通过移位操作获取 `counter` 和 `waiter` 的值
+校验 `counter` 不能为负，`Add` 和 `Wait` 不能并发调用，否则会触发 `panic`
+计数器为 `0`，唤起 `wg.Wait` 阻塞，在此之前会再次进行校验，如果添加任务会触发 `panic`
+
+### Wait
+
+使用无限循环，重试 `CAS` 操作及时 `CompareAndSwap`，如果成功 `waiter` 数量加一
+
+# sync.Cond
+
+并发原语，通过一个条件来实现阻塞和唤醒一组需要协作的 `goroutine`
+调用 `Wait` 时，当前 `goroutine` 会被阻塞，直到其他调用 `Broadcast` 或者 `Signal`
+
+### 源码
+
+- `noCopy`
+  - 静态检查
+- `L`
+  - 互斥锁，修改条件时需要持有
+- `notify`
+  - 记录被阻塞的等待队列，维护一个通知列表
+  - 协调 `goroutine` 的阻塞和唤醒
+- `checker`
+  - 同样防止结构体被复制，运行时进行动态检查
+
 # 内联优化
 
 编译时的优化技术，它是将被调用的函数体直接嵌入到调用处，而不是生成一次真正的函数调用，这样可以减少函数调用的开销
 
 `go build -gcflags='-m'` 构建参数可以查看内联情况，日志中 `inlining` 表示使用了内联优化
 
-
-
 # singleflight
 
 官方扩展库提供的扩展并发的原语，可以将多个并发请求合并为一个，主要作用是抑制重复的并发调用
 
-如果多个 `goroutine` 并发调用同一个函数，`singleflight` 可以只让一个发起调用，其他的都阻塞住，等调用结果返回，在同时返回给多个 `goroutine`
+如果多个 `goroutine` 并发调用同一个函数，`singleflight`
+可以只让一个发起调用，其他的都阻塞住，等调用结果返回，在同时返回给多个 `goroutine`
 
 读操作较为常见，写操作需要慎重
 
@@ -99,38 +144,38 @@
 ##### Group
 
 - `mu sync.Mutex`
-  - 互斥锁，用来保护下面 `m` 的访问
+    - 互斥锁，用来保护下面 `m` 的访问
 - `m  map[string]*call`
-  - 键是调用 `singleflight.Do` 传入的第一个参数 `key`
+    - 键是调用 `singleflight.Do` 传入的第一个参数 `key`
 
 方法
+
 - `Do`
 - `DoChan`
 - `Forget`
-  - 忘记一个 `key`，再次调用上面两个方法，不会等待之前未完成的函数执行结果
-
+    - 忘记一个 `key`，再次调用上面两个方法，不会等待之前未完成的函数执行结果
 
 ##### call
 
 - `wg sync.WaitGroup`
 - `val interface{}`
-  - 记录函数返回值
+    - 记录函数返回值
 - `err error`
-  - 记录函数错误
+    - 记录函数错误
 - `dups  int`
-  - 从缓存中获取需要返回的次数
+    - 从缓存中获取需要返回的次数
 - `chans []chan<- Result`
-  - 为 `DoChan` 提供返回值
+    - 为 `DoChan` 提供返回值
 
 一个正在执行的 `in-flight` 或者已经完的 `fn` 函数的调用
 
 ##### doCall
 
 - 双层 `defer` 设计
-  - 第一层用于捕获 `panic`
-  - 第二层用于处理 `runtime.Goexit` 和资源的释放
+    - 第一层用于捕获 `panic`
+    - 第二层用于处理 `runtime.Goexit` 和资源的释放
 - `panic` 处理
-  - 通过 `goroutine` 执行 `panic(e)` 保证不会阻塞 `channel` 调用
+    - 通过 `goroutine` 执行 `panic(e)` 保证不会阻塞 `channel` 调用
 
 ##### 使用场景
 
