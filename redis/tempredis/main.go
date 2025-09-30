@@ -1,11 +1,12 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"time"
 
-	"github.com/go-redis/redis"
+	"github.com/redis/go-redis/v9"
 	"github.com/stvp/tempredis"
 )
 
@@ -38,9 +39,11 @@ func main() {
 		Addr:    server.Socket(),
 	})
 
+	ctx := context.Background()
+
 	// 使用 Redis 实例
-	client.Set("name", "jianghushinian", time.Second)
-	val, err := client.Get("name").Result()
+	client.Set(ctx, "name", "test", time.Second)
+	val, err := client.Get(ctx, "name").Result()
 	if err != nil {
 		fmt.Println("Get redis key error:", err)
 		return
@@ -50,7 +53,7 @@ func main() {
 	time.Sleep(time.Second)
 
 	// 1s 后 name 已经过期
-	val, err = client.Get("name").Result()
+	val, err = client.Get(ctx, "name").Result()
 	if err != nil {
 		fmt.Println("Get redis key error:", err)
 		return
