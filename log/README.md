@@ -126,6 +126,7 @@ func X(V... any) {
 轻量级日志记录库，内部避免使用 `interface{}` 和反射来提高代码效率
 
 特点
+
 - 快
 - 支持结构化日志记录
 - 支持其中日志级别
@@ -136,3 +137,37 @@ func X(V... any) {
 
 针对生产环境和开发环境提供不同的函数来创建 `Logger` 对象
 如果需要附加属性值，需要采用采用强类型，底层使用 `zapcore.Field` 类型来记录
+
+### SugaredLogger
+
+提供更为人性化接口，日志中追加 `key-value` 时不需要使用强类型指定，只需要保证 `key` 是 `string`
+
+### 定制 Logger
+
+只需要定制 `zap.Config`
+
+### 源码
+
+##### 实现 NewProduction() 和 NewDevelopment()
+
+先创建一个配置对象 `zap.Config`，然后再调用配置对象的 `Build` 方法构建 `Logger`
+
+# logrus
+
+特点
+- 兼容标准库 `API`
+- 可扩展机制 `Hooks` 机制
+  - 将不同的日志添加 `Hooks` 记录到不同位置
+    - `Error` 发送给特定的程序进行报警
+- 并发安全
+- 控制台可以输出不同颜色
+
+### Hooks
+
+##### Hook 接口
+
+- `Levels() []Level`
+  - 如果记录的日志级别存在，触发 `Hooks` 调用 `Fire` 方法
+- `Fire(*Entry) error`
+
+实现这两个接口可以自定义 `Hook`，有大量内置和第三方的
