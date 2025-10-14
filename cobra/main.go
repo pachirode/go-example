@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/cobra/doc"
 	"github.com/spf13/viper"
 )
 
@@ -35,6 +36,7 @@ func addChildCommand(rootCmd *cobra.Command) {
 		Run: func(cmd *cobra.Command, args []string) {
 			println("child")
 		},
+		Args: cobra.MaximumNArgs(10),
 	}
 
 	rootCmd.AddCommand(childCmd)
@@ -79,6 +81,34 @@ func initConfig() {
 
 	if err := viper.ReadInConfig(); err != nil {
 		fmt.Println("Can't read config:", err)
+		os.Exit(1)
+	}
+}
+
+func setHelpMsg(rootCmd *cobra.Command) {
+	// 控制 help 命令
+	rootCmd.SetHelpCommand(&cobra.Command{
+		Use:    "help",
+		Short:  "Custom help command",
+		Hidden: true,
+		Run: func(cmd *cobra.Command, args []string) {
+			println("Custom help command")
+		},
+	})
+
+	// 控制 -h/--help
+	rootCmd.SetHelpFunc(func(command *cobra.Command, strings []string) {
+		println(strings)
+	})
+}
+
+func genDocs(rootCmd *cobra.Command) {
+	file, err := os.Create("./docs/command.md")
+	if err != nil {
+		os.Exit(1)
+	}
+	defer file.Close()
+	if err = doc.GenMarkdown(rootCmd, file); err != nil {
 		os.Exit(1)
 	}
 }
