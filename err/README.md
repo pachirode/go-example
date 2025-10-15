@@ -108,3 +108,34 @@ type Error interface {
     - `V`
 
 只有当 `T=nil, V 没有设置` 接口的值才为 `nil`
+
+# go-multierror
+
+第三方库，处理多个错误的聚合
+
+默认不支持并发场景
+
+# K8S Aggregate
+
+### Aggregate 接口
+
+- `error`
+- `Errors() []error`
+- `Is(error) bool`
+
+### NewAggregate()
+
+传入一个错误列表，转换为 `Aggregate` 类型，内部会过滤值为 `nil` 的错误
+
+实际底层使用的错误列表为 `[]error`
+
+### Error()
+
+- 错误为空
+- 单个错误直接返回
+- 多个错误
+  - 集合去重
+
+### FilterOut()
+
+移除匹配的错误

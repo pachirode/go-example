@@ -1,0 +1,2 @@
+time="2025-10-13T10:59:06+08:00" level=warning msg="Warn msg" number=122 omg=true
+time="2025-10-13T10:59:06+08:00" level=error msg="Error msg" number=122 omg=true
